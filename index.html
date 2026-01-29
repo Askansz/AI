@@ -312,182 +312,134 @@
         <button id="sendBtn">➤</button>
       </div>
     </div>
-  </div>
-
+  </div
   <script>
+    // ===== Elements =====
     const btn = document.getElementById("modelBtn");
     const menu = document.getElementById("modelMenu");
     const modelLabel = document.getElementById("modelLabel");
+  
     const input = document.getElementById("chatPrompt");
     const sendBtn = document.getElementById("sendBtn");
-
+    const conversation = document.querySelector(".conversation");
+  
+    // ===== State =====
     let selectedModel = "GPT-5.2";
-
+  
+    // ===== Dropdown =====
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
       menu.classList.toggle("open");
     });
-
+  
     document.addEventListener("click", () => {
       menu.classList.remove("open");
     });
-
+  
     menu.addEventListener("click", (e) => {
       const item = e.target.closest(".menu-item");
       if (!item) return;
-
+  
       selectedModel = item.textContent.trim();
       modelLabel.textContent = selectedModel.replace("GPT-", "");
       menu.classList.remove("open");
     });
-
+  
+    // ===== Textarea autosize =====
     const minHeight = input.scrollHeight;
-
+  
     input.addEventListener("input", () => {
       input.style.height = "auto";
       input.style.height = Math.max(input.scrollHeight, minHeight) + "px";
     });
-
-    function handleSend() {
+  
+    // ===== Render helpers =====
+    function addUserMessage(text) {
+      const el = document.createElement("div");
+      el.className = "message user";
+      el.innerHTML = `<div class="user-bubble">${text}</div>`;
+      conversation.appendChild(el);
+      scrollToBottom();
+    }
+  
+    function addAssistantMessage(text) {
+      const el = document.createElement("div");
+      el.className = "message assistant";
+      el.innerHTML = `
+        <div class="assistant-content">
+          <div class="assistant-text">${text}</div>
+          <div class="assistant-actions">
+            <span class="action-placeholder"></span>
+            <span class="action-placeholder"></span>
+            <span class="action-placeholder"></span>
+          </div>
+        </div>
+      `;
+      conversation.appendChild(el);
+      scrollToBottom();
+    }
+  
+    function scrollToBottom() {
+      window.scrollTo({
+        top: document.body.scrollHeight,
+        behavior: "smooth"
+      });
+    }
+  
+    // ===== API call =====
+    async function callAI(prompt) {
+      const apiModel = selectedModel === "GPT-5.2" ? "pi" : "pc";
+  
+      const response = await fetch("https://ai.portalsbase.com/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-KEY": "DEV-DEFAULT-API-KEY-1234567890"
+        },
+        body: JSON.stringify({
+          prompt: prompt,
+          model: apiModel
+        })
+      });
+  
+      if (!response.ok) {
+        throw new Error("API request failed");
+      }
+  
+      const data = await response.json();
+      return data.response;
+    }
+  
+    // ===== Send logic =====
+    async function handleSend() {
       const text = input.value.trim();
       if (!text) return;
-
-      console.log("Message:", text);
-      console.log("Using model:", selectedModel);
-
+  
+      addUserMessage(text);
+  
       input.value = "";
       input.style.height = minHeight + "px";
+      sendBtn.disabled = true;
+  
+      try {
+        const reply = await callAI(text);
+        addAssistantMessage(reply);
+      } catch (err) {
+        addAssistantMessage("Error: failed to get response.");
+        console.error(err);
+      } finally {
+        sendBtn.disabled = false;
+      }
     }
-
+  
     sendBtn.addEventListener("click", handleSend);
-
-<script>
-  // ===== Elements =====
-  const btn = document.getElementById("modelBtn");
-  const menu = document.getElementById("modelMenu");
-  const modelLabel = document.getElementById("modelLabel");
-
-  const input = document.getElementById("chatPrompt");
-  const sendBtn = document.getElementById("sendBtn");
-  const conversation = document.querySelector(".conversation");
-
-  // ===== State =====
-  let selectedModel = "GPT-5.2";
-
-  // ===== Dropdown =====
-  btn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    menu.classList.toggle("open");
-  });
-
-  document.addEventListener("click", () => {
-    menu.classList.remove("open");
-  });
-
-  menu.addEventListener("click", (e) => {
-    const item = e.target.closest(".menu-item");
-    if (!item) return;
-
-    selectedModel = item.textContent.trim();
-    modelLabel.textContent = selectedModel.replace("GPT-", "");
-    menu.classList.remove("open");
-  });
-
-  // ===== Textarea autosize =====
-  const minHeight = input.scrollHeight;
-
-  input.addEventListener("input", () => {
-    input.style.height = "auto";
-    input.style.height = Math.max(input.scrollHeight, minHeight) + "px";
-  });
-
-  // ===== Render helpers =====
-  function addUserMessage(text) {
-    const el = document.createElement("div");
-    el.className = "message user";
-    el.innerHTML = `<div class="user-bubble">${text}</div>`;
-    conversation.appendChild(el);
-    scrollToBottom();
-  }
-
-  function addAssistantMessage(text) {
-    const el = document.createElement("div");
-    el.className = "message assistant";
-    el.innerHTML = `
-      <div class="assistant-content">
-        <div class="assistant-text">${text}</div>
-        <div class="assistant-actions">
-          <span class="action-placeholder"></span>
-          <span class="action-placeholder"></span>
-          <span class="action-placeholder"></span>
-        </div>
-      </div>
-    `;
-    conversation.appendChild(el);
-    scrollToBottom();
-  }
-
-  function scrollToBottom() {
-    window.scrollTo({
-      top: document.body.scrollHeight,
-      behavior: "smooth"
+  
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        handleSend();
+      }
     });
-  }
-
-  // ===== API call =====
-  async function callAI(prompt) {
-    const apiModel = selectedModel === "GPT-5.2" ? "pi" : "pc";
-
-    const response = await fetch("https://ai.portalsbase.com/api/chat", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-API-KEY": "DEV-DEFAULT-API-KEY-1234567890"
-      },
-      body: JSON.stringify({
-        prompt: prompt,
-        model: apiModel
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error("API request failed");
-    }
-
-    const data = await response.json();
-    return data.response;
-  }
-
-  // ===== Send logic =====
-  async function handleSend() {
-    const text = input.value.trim();
-    if (!text) return;
-
-    addUserMessage(text);
-
-    input.value = "";
-    input.style.height = minHeight + "px";
-    sendBtn.disabled = true;
-
-    try {
-      const reply = await callAI(text);
-      addAssistantMessage(reply);
-    } catch (err) {
-      addAssistantMessage("Error: failed to get response.");
-      console.error(err);
-    } finally {
-      sendBtn.disabled = false;
-    }
-  }
-
-  sendBtn.addEventListener("click", handleSend);
-
-  input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  });
-</script>
+  </script>
 </body>
 </html>
