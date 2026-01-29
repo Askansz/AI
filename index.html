@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Chat UI</title>
+
+  <style>
+    /* ===== Base layout ===== */
+    body {
+      margin: 0;
+      background-color: #252422;
+      min-height: 100vh;
+      display: flex;
+      color: white;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    /* ===== Sidebar ===== */
+    .sidebar {
+      width: 18%;
+      background-color: #111;
+    }
+
+    .bar-item {
+      display: block;
+      padding: 10px;
+      text-decoration: none;
+      color: #ffffff;
+    }
+
+    .bar-item:hover {
+      color: #cfcfcf;
+    }
+
+    /* ===== Main column ===== */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* ===== Header ===== */
+    .main-header {
+      position: sticky;
+      top: 0;
+      padding: 10px;
+      z-index: 10;
+    }
+
+    /* ===== Model dropdown ===== */
+    .model-dropdown {
+      position: relative;
+      display: inline-block;
+    }
+
+    .model-button {
+      background: #252422;
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 22px;
+      width: 200px;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      caret-color: transparent;
+    }
+
+    .model-button:hover {
+      background: #333;
+    }
+
+    .model-button:focus {
+      outline: none;
+    }
+
+    .model-button .model {
+      color: #9a9a9a;
+      font-weight: 500;
+    }
+
+    .model-button .caret {
+      font-size: 14px;
+    }
+
+    /* ===== Dropdown menu ===== */
+    .model-menu {
+      display: none;
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      background: #333;
+      border-radius: 12px;
+      padding: 8px;
+      min-width: 200px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      z-index: 100;
+    }
+
+    .model-menu.open {
+      display: block;
+    }
+
+    .menu-item {
+      padding: 10px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      color: #ddd;
+    }
+
+    .menu-item:hover {
+      background: #444;
+    }
+
+    .menu-item.active {
+      background: #333;
+      color: white;
+    }
+
+    /* ===== Chat area ===== */
+    .chat-container {
+      flex: 1;
+      position: relative;
+    }
+
+    .messages {
+      display: flex;
+      justify-content: center;
+      padding-bottom: 120px;
+    }
+
+    .conversation {
+      width: 100%;
+      max-width: 900px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+    }
+
+    /* ===== Messages ===== */
+    .message {
+      width: 100%;
+    }
+
+    .message.user {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .user-bubble {
+      background: #333;
+      padding: 10px 14px;
+      border-radius: 999px;
+      font-size: 15px;
+      max-width: 60%;
+    }
+
+    .message.assistant {
+      display: flex;
+      justify-content: center;
+    }
+
+    .assistant-content {
+      width: 100%;
+      max-width: 720px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .assistant-text {
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    .assistant-actions {
+      display: flex;
+      gap: 10px;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+    }
+
+    .message.assistant:hover .assistant-actions {
+      opacity: 1;
+    }
+
+    .action-placeholder {
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.15);
+    }
+
+    /* ===== Input bar ===== */
+    .chat-input {
+      position: fixed;
+      bottom: 0;
+      left: 18%;
+      right: 0;
+      display: flex;
+      gap: 10px;
+      padding: 16px;
+      background: #252422;
+      align-items: flex-end;
+    }
+
+    #chatPrompt {
+      flex: 1;
+      resize: none;
+      background: #1f1f1f;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 15px;
+      outline: none;
+      max-height: 150px;
+    }
+
+    #sendBtn {
+      background: #444;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 28px;
+      cursor: pointer;
+      height: 65px;
+      width: 65px;
+    }
+
+    #sendBtn:hover {
+      background: #555;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <a href="#" class="bar-item">Link 1</a>
+    <a href="#" class="bar-item">Link 2</a>
+    <a href="#" class="bar-item">Link 3</a>
+  </div>
+
+  <!-- Main column -->
+  <div class="main">
+
+    <!-- Header -->
+    <div class="main-header">
+      <div class="model-dropdown">
+        <button class="model-button" id="modelBtn">
+          <span class="brand">ChatGPT</span>
+          <span class="model" id="modelLabel">5.2</span>
+          <span class="caret">▾</span>
+        </button>
+
+        <div class="model-menu" id="modelMenu">
+          <div class="menu-item active">GPT-5.2</div>
+          <div class="menu-item">GPT-4o</div>
+          <div class="menu-item">GPT-4.1</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat -->
+    <div class="chat-container">
+      <div class="messages">
+        <div class="conversation">
+
+          <div class="message assistant">
+            <div class="assistant-content">
+              <div class="assistant-text">Hello.</div>
+              <div class="assistant-actions">
+                <span class="action-placeholder"></span>
+                <span class="action-placeholder"></span>
+                <span class="action-placeholder"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="message user">
+            <div class="user-bubble">Hello</div>
+          </div>
+
+          <div class="message assistant">
+            <div class="assistant-content">
+              <div class="assistant-text">I’m functioning normally.</div>
+              <div class="assistant-actions">
+                <span class="action-placeholder"></span>
+                <span class="action-placeholder"></span>
+                <span class="action-placeholder"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="message user">
+            <div class="user-bubble">How are you?</div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Input -->
+      <div class="chat-input">
+        <textarea id="chatPrompt" placeholder="Message ChatGPT" rows="1"></textarea>
+        <button id="sendBtn">➤</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const btn = document.getElementById("modelBtn");
+    const menu = document.getElementById("modelMenu");
+    const modelLabel = document.getElementById("modelLabel");
+    const input = document.getElementById("chatPrompt");
+    const sendBtn = document.getElementById("sendBtn");
+
+    let selectedModel = "GPT-5.2";
+
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      menu.classList.toggle("open");
+    });
+
+    document.addEventListener("click", () => {
+      menu.classList.remove("open");
+    });
+
+    menu.addEventListener("click", (e) => {
+      const item = e.target.closest(".menu-item");
+      if (!item) return;
+
+      selectedModel = item.textContent.trim();
+      modelLabel.textContent = selectedModel.replace("GPT-", "");
+      menu.classList.remove("open");
+    });
+
+    const minHeight = input.scrollHeight;
+
+    input.addEventListener("input", () => {
+      input.style.height = "auto";
+      input.style.height = Math.max(input.scrollHeight, minHeight) + "px";
+    });
+
+    function handleSend() {
+      const text = input.value.trim();
+      if (!text) return;
+
+      console.log("Message:", text);
+      console.log("Using model:", selectedModel);
+
+      input.value = "";
+      input.style.height = minHeight + "px";
+    }
+
+    sendBtn.addEventListener("click", handleSend);
+
+<script>
+  // ===== Elements =====
+  const btn = document.getElementById("modelBtn");
+  const menu = document.getElementById("modelMenu");
+  const modelLabel = document.getElementById("modelLabel");
+
+  const input = document.getElementById("chatPrompt");
+  const sendBtn = document.getElementById("sendBtn");
+  const conversation = document.querySelector(".conversation");
+
+  // ===== State =====
+  let selectedModel = "GPT-5.2";
+
+  // ===== Dropdown =====
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    menu.classList.toggle("open");
+  });
+
+  document.addEventListener("click", () => {
+    menu.classList.remove("open");
+  });
+
+  menu.addEventListener("click", (e) => {
+    const item = e.target.closest(".menu-item");
+    if (!item) return;
+
+    selectedModel = item.textContent.trim();
+    modelLabel.textContent = selectedModel.replace("GPT-", "");
+    menu.classList.remove("open");
+  });
+
+  // ===== Textarea autosize =====
+  const minHeight = input.scrollHeight;
+
+  input.addEventListener("input", () => {
+    input.style.height = "auto";
+    input.style.height = Math.max(input.scrollHeight, minHeight) + "px";
+  });
+
+  // ===== Render helpers =====
+  function addUserMessage(text) {
+    const el = document.createElement("div");
+    el.className = "message user";
+    el.innerHTML = `<div class="user-bubble">${text}</div>`;
+    conversation.appendChild(el);
+    scrollToBottom();
+  }
+
+  function addAssistantMessage(text) {
+    const el = document.createElement("div");
+    el.className = "message assistant";
+    el.innerHTML = `
+      <div class="assistant-content">
+        <div class="assistant-text">${text}</div>
+        <div class="assistant-actions">
+          <span class="action-placeholder"></span>
+          <span class="action-placeholder"></span>
+          <span class="action-placeholder"></span>
+        </div>
+      </div>
+    `;
+    conversation.appendChild(el);
+    scrollToBottom();
+  }
+
+  function scrollToBottom() {
+    window.scrollTo({
+      top: document.body.scrollHeight,
+      behavior: "smooth"
+    });
+  }
+
+  // ===== API call =====
+  async function callAI(prompt) {
+    const apiModel = selectedModel === "GPT-5.2" ? "pi" : "pc";
+
+    const response = await fetch("https://ai.portalsbase.com/api/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-KEY": "DEV-DEFAULT-API-KEY-1234567890"
+      },
+      body: JSON.stringify({
+        prompt: prompt,
+        model: apiModel
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error("API request failed");
+    }
+
+    const data = await response.json();
+    return data.response;
+  }
+
+  // ===== Send logic =====
+  async function handleSend() {
+    const text = input.value.trim();
+    if (!text) return;
+
+    addUserMessage(text);
+
+    input.value = "";
+    input.style.height = minHeight + "px";
+    sendBtn.disabled = true;
+
+    try {
+      const reply = await callAI(text);
+      addAssistantMessage(reply);
+    } catch (err) {
+      addAssistantMessage("Error: failed to get response.");
+      console.error(err);
+    } finally {
+      sendBtn.disabled = false;
+    }
+  }
+
+  sendBtn.addEventListener("click", handleSend);
+
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  });
+</script>
+</body>
+</html>
